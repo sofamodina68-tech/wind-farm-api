@@ -1,0 +1,337 @@
+{
+  "info": {
+    "_postman_id": "5eafbfc2-9a2d-438b-a347-8afe55ac9366",
+    "name": "Wind Farm API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "41190297"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Has status ok', () => {\r\n  pm.expect(pm.response.json().status).to.eql('ok');\r\n});\r\npm.test('Has requestId', () => {\r\n  pm.expect(pm.response.json()).to.have.property('requestId');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Equipment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));\r\n\r\npm.test('Has id', () => {\r\n  const json = pm.response.json();\r\n  pm.expect(json).to.have.property('id');\r\n  pm.collectionVariables.set('equipmentId', json.id);\r\n});\r\n\r\npm.test('Location header set', () => {\r\n  const loc = pm.response.headers.get('Location') || '';\r\n  pm.expect(loc).to.include('/api/equipment/');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"Turbine Test\",\r\n  \"type\": \"turbine\",\r\n  \"serialNumber\": \"SN-20260920-001\",\r\n  \"location\": { \"lat\": 55.77, \"lon\": 37.63 },\r\n  \"installedAt\": \"2024-03-10T00:00:00.000Z\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "List Equipment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Has metadata', () => {\r\n  const j = pm.response.json();\r\n  pm.expect(j).to.have.property('total');\r\n  pm.expect(j).to.have.property('page');\r\n  pm.expect(j).to.have.property('limit');\r\n  pm.expect(j.data).to.be.an('array');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Equipment by Id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Same id', () => {\r\n  pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('equipmentId'));\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment",
+            "{{equipmentId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Duplicate Serial (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));\r\npm.test('Code CONFLICT', () => {\r\n  pm.expect(pm.response.json().error.code).to.eql('CONFLICT');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"Turbine Dup\",\r\n  \"type\": \"turbine\",\r\n  \"serialNumber\": \"SN-001\",\r\n  \"location\": { \"lat\": 55.75, \"lon\": 37.61 },\r\n  \"installedAt\": \"2024-01-15T00:00:00.000Z\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Invalid Body (422)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 422', () => pm.response.to.have.status(422));\r\npm.test('Code VALIDATION_ERROR', () => {\r\n  const err = pm.response.json().error;\r\n  pm.expect(err.code).to.eql('VALIDATION_ERROR');\r\n  pm.expect(err.details).to.be.an('array').that.is.not.empty;\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"\",\r\n  \"type\": \"turbine\",\r\n  \"serialNumber\": \"SN-INVALID-001\",\r\n  \"location\": { \"lat\": 55.75, \"lon\": 37.61 },\r\n  \"installedAt\": \"2024-01-15T00:00:00.000Z\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment?Content-Type= application/json",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment"
+          ],
+          "query": [
+            {
+              "key": "Content-Type",
+              "value": " application/json"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Unknown Id (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));\r\npm.test('Code NOT_FOUND', () => {\r\n  pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Unknown Route (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));\r\npm.test('Route message', () => {\r\n  pm.expect(pm.response.json().error.message).to.include('/api/unknown');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/unknown",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "unknown"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Equipment Weather",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 or 502', () => {\r\n  pm.expect([200, 502]).to.include(pm.response.code);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/weather",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "equipment",
+            "{{equipmentId}}",
+            "weather"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "equipmentId",
+      "value": ""
+    }
+  ]
+}
