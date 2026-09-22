@@ -8,6 +8,7 @@ import { logger } from './middlewares/logger.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import equipmentRoutes from './routes/equipment.routes.js';
+import requestsRoutes from './routes/requests.routes.js';
 
 export function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ export function createApp() {
   // 6. Routes
   app.get('/api/health', (req, res) => res.json({ status: 'ok', requestId: req.id }));
   app.use('/api/equipment', equipmentRoutes);
+  app.use('/api/requests', requestsRoutes);
 
   // 7. 404 and error handler (must be last!)
   app.use(notFound);
