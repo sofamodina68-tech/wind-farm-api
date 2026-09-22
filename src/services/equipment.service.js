@@ -68,15 +68,8 @@ export const equipmentService = {
     return requestsRepository.findByEquipmentId(id);
   },
 
-  async getWeather(id) {
-    const equipment = await this.getById(id);
-    try {
-      return await weatherService.getForecastByCoords(equipment.location, 3);
-    } catch {
-      throw new ExternalServiceError(
-        'BAD_GATEWAY',
-        'Погодный сервис временно недоступен',
-      );
-    }
-  },
+  async getWeather(id, hours) {
+  const equipment = await this.getById(id);
+  return weatherService.getForecastByCoords(equipment.location, hours);
+ },
 };

@@ -12,11 +12,14 @@ export const config = {
     max: Number(process.env.RATE_LIMIT_MAX ?? 100),
   },
   weather: {
-    forecastUrl:
-      process.env.WEATHER_API_URL ?? 'https://api.open-meteo.com/v1/forecast',
-    geocodingUrl:
-      process.env.GEOCODING_API_URL ??
-      'https://geocoding-api.open-meteo.com/v1/search',
-    timeoutMs: Number(process.env.REQUEST_TIMEOUT_MS ?? 5000),
-  },
+  forecastUrl:
+    process.env.WEATHER_API_URL ?? 'https://api.open-meteo.com/v1/forecast',
+  geocodingUrl:
+    process.env.GEOCODING_API_URL ??
+    'https://geocoding-api.open-meteo.com/v1/search',
+  timeoutMs: Number(process.env.REQUEST_TIMEOUT_MS ?? 5000),
+  maxWindMs: Number(process.env.WEATHER_MAX_WIND_MS ?? 10),
+  maxPrecipMm: Number(process.env.WEATHER_MAX_PRECIP_MM ?? 0),
+  defaultHours: Number(process.env.WEATHER_FORECAST_HOURS ?? 24),
+ },
 };
