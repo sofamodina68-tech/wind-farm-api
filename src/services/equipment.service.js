@@ -1,7 +1,11 @@
 import { equipmentRepository } from '../repositories/equipment.repository.js';
 import { requestsRepository } from '../repositories/requests.repository.js';
 import { weatherService } from './weather.service.js';
-import { NotFoundError, ConflictError, AppError } from '../errors/AppError.js';
+import {
+  NotFoundError,
+  ConflictError,
+  ExternalServiceError,
+} from '../errors/AppError.js';
 
 export const equipmentService = {
   async list(query) {
@@ -15,7 +19,9 @@ export const equipmentService = {
   },
 
   async create(data) {
-    const existing = await equipmentRepository.findBySerialNumber(data.serialNumber);
+    const existing = await equipmentRepository.findBySerialNumber(
+      data.serialNumber,
+    );
     if (existing) throw new ConflictError('Серийный номер уже используется');
 
     const payload = { ...data };
@@ -30,7 +36,9 @@ export const equipmentService = {
     await this.getById(id);
 
     if (patch.serialNumber) {
-      const existing = await equipmentRepository.findBySerialNumber(patch.serialNumber);
+      const existing = await equipmentRepository.findBySerialNumber(
+        patch.serialNumber,
+      );
       if (existing && existing.id !== id) {
         throw new ConflictError('Серийный номер уже используется');
       }
@@ -48,7 +56,9 @@ export const equipmentService = {
     await this.getById(id);
     const openCount = await requestsRepository.countOpenByEquipmentId(id);
     if (openCount > 0) {
-      throw new ConflictError('Нельзя удалить оборудование с открытыми заявками');
+      throw new ConflictError(
+        'Нельзя удалить оборудование с открытыми заявками',
+      );
     }
     await equipmentRepository.remove(id);
   },
@@ -62,11 +72,11 @@ export const equipmentService = {
     const equipment = await this.getById(id);
     try {
       return await weatherService.getForecastByCoords(equipment.location, 3);
-    } catch (err) {
-      throw new AppError('Погодный сервис временно недоступен', {
-        statusCode: 502,
-        code: 'WEATHER_UNAVAILABLE',
-      });
+    } catch {
+      throw new ExternalServiceError(
+        'BAD_GATEWAY',
+        'Погодный сервис временно недоступен',
+      );
     }
   },
 };

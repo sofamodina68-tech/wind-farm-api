@@ -1,11 +1,18 @@
-import { ValidationError } from '../errors/AppError.js';
+import { BadRequestError, ValidationError } from '../errors/AppError.js';
 
 export function validate(schemas) {
   return (req, res, next) => {
-    const errors = [];
+    const errors = {
+      params: [],
+      query: [],
+      body: [],
+    };
+
+    const validated = {};
 
     for (const [part, schema] of Object.entries(schemas)) {
       if (!schema) continue;
+
       const { error, value } = schema.validate(req[part], {
         abortEarly: false,
         stripUnknown: true,
@@ -13,20 +20,31 @@ export function validate(schemas) {
       });
 
       if (error) {
-        errors.push(
-          ...error.details.map((d) => ({
-            field: d.path.join('.'),
-            message: d.message,
-          })),
-        );
+        errors[part] = error.details.map((d) => ({
+          field: d.path.join('.') || part,
+          message: d.message,
+        }));
       } else {
-        req[part] = value;
+        validated[part] = value;
       }
     }
 
-    if (errors.length > 0) {
-      return next(new ValidationError('Некорректные данные запроса', errors));
+    // params и query — это про структуру запроса → 400
+    const structuralProblems = [...errors.params, ...errors.query];
+    if (structuralProblems.length > 0) {
+      return next(
+        new BadRequestError('Некорректные параметры запроса', structuralProblems),
+      );
     }
+
+    // body — это про данные → 422
+    if (errors.body.length > 0) {
+      return next(
+        new ValidationError('Некорректные данные запроса', errors.body),
+      );
+    }
+
+    req.validated = validated;
     next();
   };
 }
