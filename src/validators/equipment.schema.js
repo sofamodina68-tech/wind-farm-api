@@ -35,3 +35,7 @@ export const listEquipmentQuerySchema = Joi.object({
 export const idParamSchema = Joi.object({
   id: Joi.string().uuid().required(),
 });
+
+export const weatherQuerySchema = Joi.object({
+  hours: Joi.number().integer().min(1).max(72).default(24),
+});

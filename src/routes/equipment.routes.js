@@ -5,8 +5,9 @@ import {
   createEquipmentSchema,
   updateEquipmentSchema,
   listEquipmentQuerySchema,
+  weatherQuerySchema,
   idParamSchema,
-} from '../validators/equipment.schema.js';
+} from '../validators/equipment.schema.js'; 
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get(
 );
 router.get(
   '/:id/weather',
-  validate({ params: idParamSchema }),
+  validate({ params: idParamSchema, query: weatherQuerySchema }),
   equipmentController.getWeather,
 );
 

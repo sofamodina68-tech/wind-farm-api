@@ -42,7 +42,10 @@ export const equipmentController = {
   }),
 
   getWeather: asyncHandler(async (req, res) => {
-    const forecast = await equipmentService.getWeather(req.validated.params.id);
-    res.json({ data: forecast });
-  }),
+  const forecast = await equipmentService.getWeather(
+    req.validated.params.id,
+    req.validated.query.hours,
+  );
+  res.json({ data: forecast });
+ }),
 };
