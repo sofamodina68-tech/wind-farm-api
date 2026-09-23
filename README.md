@@ -1,44 +1,50 @@
 # Wind Farm API
 
-REST API на Express для учёта заявок на техническое обслуживание оборудования производственной площадки (ветропарка). Сервис ведёт справочник оборудования и заявок на его обслуживание, контролирует жизненный цикл заявки и позволяет оценить погодные условия на объекте перед планированием наружных работ.
+REST API на Express для учёта заявок на техническое обслуживание оборудования производственной площадки (ветропарка). Сервис ведёт справочники площадок, оборудования, технических паспортов и специалистов, контролирует жизненный цикл заявок и позволяет оценить погодные условия на объекте перед планированием наружных работ.
 
-Данные на текущий момент хранятся в JSON-файлах в папке `data/`, доступ к ним изолирован за слоем репозиториев — замена хранилища на PostgreSQL не потребует изменений в сервисах и контроллерах.
+Данные хранятся в **PostgreSQL** (Docker Compose), доступ к ним изолирован за слоем репозиториев на Sequelize.
 
-## Требования
+## Стек технологий
 
-- Node.js **20+** (используется встроенный `fetch`, `--env-file`)
+- **Node.js 20+** (ESM, встроенный `fetch`)
+- **Express** — HTTP-сервер
+- **Sequelize 6** — ORM, миграции, сиды
+- **PostgreSQL 16** — база данных, запускается через **Docker Compose**
+- **Joi** — валидация входных данных
+- **Helmet, CORS, express-rate-limit** — безопасность
+- **Postman** — коллекция для тестирования
+
+## Требования к окружению
+
+- Node.js >= 20
+- Docker Desktop (для PostgreSQL)
 - npm
 
-## Установка
+## Быстрый старт с нуля
 
 ```bash
+# 1. Клонировать репозиторий
 git clone https://github.com/sofamodina68-tech/wind-farm-api.git
 cd wind-farm-api
+
+# 2. Установить зависимости
 npm install
-cp .env.example .env
-```
 
-## Переменные окружения
+# 3. Скопировать .env.example в .env
+cp .env.example .env        # Linux / macOS
+copy .env.example .env      # Windows (cmd)
 
-Все настройки читаются из `.env`. Пример лежит в `.env.example`.
+# 4. Поднять PostgreSQL через Docker Compose
+docker compose up -d
+docker compose ps            # дождаться статуса healthy
 
-| Переменная | Назначение | По умолчанию |
-|---|---|---|
-| `PORT` | Порт сервера | `3000` |
-| `NODE_ENV` | Режим работы (`development` / `production`) | `development` |
-| `CORS_ORIGINS` | Whitelist источников через запятую | `http://localhost:3000` |
-| `RATE_LIMIT_WINDOW_MS` | Окно rate limit, мс | `60000` |
-| `RATE_LIMIT_MAX` | Максимум запросов за окно | `100` |
-| `WEATHER_API_URL` | URL прогноза Open-Meteo | `https://api.open-meteo.com/v1/forecast` |
-| `GEOCODING_API_URL` | URL геокодинга Open-Meteo | `https://geocoding-api.open-meteo.com/v1/search` |
-| `REQUEST_TIMEOUT_MS` | Таймаут внешних запросов, мс | `5000` |
-| `WEATHER_MAX_WIND_MS` | Порог ветра, м/с | `10` |
-| `WEATHER_MAX_PRECIP_MM` | Порог осадков, мм | `0` |
-| `WEATHER_FORECAST_HOURS` | Горизонт прогноза по умолчанию, ч | `24` |
+# 5. Применить миграции
+npm run db:migrate
 
-## Запуск
+# 6. Наполнить БД тестовыми данными (сиды)
+npm run db:seed
 
-```bash
+# 7. Запустить сервер
 npm start
 ```
 
@@ -50,38 +56,172 @@ npm start
 curl http://localhost:3000/api/health
 ```
 
-Ответ:
+Ожидаемый ответ:
 ```json
 { "status": "ok", "requestId": "xxxxxxxx" }
 ```
 
+## Порядок отката и повторного применения
+
+```bash
+# Откатить все миграции
+npm run db:migrate:undo:all
+
+# Откатить все сиды
+npm run db:seed:undo:all
+
+# Применить заново
+npm run db:migrate
+npm run db:seed
+```
+
+Для полной очистки (включая том PostgreSQL):
+
+```bash
+docker compose down -v
+```
+
+## Переменные окружения
+
+Все настройки читаются из `.env`. Пример — в `.env.example`.
+
+### Общие
+
+| Переменная | Назначение | По умолчанию |
+|---|---|---|
+| `PORT` | Порт сервера | `3000` |
+| `NODE_ENV` | Режим (`development` / `production`) | `development` |
+| `CORS_ORIGINS` | Whitelist источников через запятую | `http://localhost:3000` |
+| `RATE_LIMIT_WINDOW_MS` | Окно rate limit, мс | `60000` |
+| `RATE_LIMIT_MAX` | Максимум запросов за окно | `100` |
+
+### База данных
+
+| Переменная | Назначение | По умолчанию |
+|---|---|---|
+| `DB_HOST` | Хост PostgreSQL | `localhost` |
+| `DB_PORT` | Порт | `5432` |
+| `DB_NAME` | Имя БД | `wind_farm` |
+| `DB_USER` | Пользователь | `wind_farm` |
+| `DB_PASSWORD` | Пароль | — |
+| `DB_POOL_MIN` | Минимум соединений в пуле | `0` |
+| `DB_POOL_MAX` | Максимум соединений в пуле | `10` |
+
+### Погода
+
+| Переменная | Назначение | По умолчанию |
+|---|---|---|
+| `WEATHER_API_URL` | URL прогноза Open-Meteo | `https://api.open-meteo.com/v1/forecast` |
+| `GEOCODING_API_URL` | URL геокодинга | `https://geocoding-api.open-meteo.com/v1/search` |
+| `REQUEST_TIMEOUT_MS` | Таймаут внешних запросов, мс | `5000` |
+| `WEATHER_MAX_WIND_MS` | Порог ветра, м/с | `10` |
+| `WEATHER_MAX_PRECIP_MM` | Порог осадков, мм | `0` |
+| `WEATHER_FORECAST_HOURS` | Горизонт прогноза, ч | `24` |
+
+## Схема базы данных
+
+### ER-диаграмма
+
+```
+                ┌─────────────┐
+                │   sites     │
+                │ ─────────── │
+                │ id (PK)     │
+                │ name        │
+                │ code (UQ)   │
+                │ region      │
+                │ lat, lon    │
+                └──────┬──────┘
+                       │ 1
+                       │
+                       │ N
+                ┌──────┴──────────┐
+                │   equipment     │
+                │ ─────────────── │
+                │ id (PK)         │
+                │ site_id (FK)    │
+                │ name            │
+                │ type (ENUM)     │
+                │ serial_number   │
+                │ status (ENUM)   │
+                │ installed_at    │
+                └──┬─────────┬────┘
+                   │ 1       │ 1
+                   │         │
+                   │ 1       │ N
+        ┌──────────┴───┐  ┌──┴─────────────────────┐
+        │ equipment_   │  │ maintenance_requests   │
+        │ passports    │  │ ───────────────────── │
+        │ ──────────── │  │ id (PK)               │
+        │ id (PK)      │  │ equipment_id (FK)     │
+        │ equipment_id │  │ title                 │
+        │  (UQ → 1:1)  │  │ description           │
+        │ manufacturer │  │ priority (ENUM)       │
+        │ model        │  │ status (ENUM)         │
+        │ rated_power  │  │ planned_at            │
+        │ last_insp    │  │ created_at, updated_at│
+        └──────────────┘  └──┬───────────────┬────┘
+                             │ 1             │ 1
+                             │               │
+                             │ N             │ N
+                  ┌──────────┴──────┐  ┌─────┴────────────┐
+                  │ request_status_ │  │ request_assignees│
+                  │ history         │  │ ──────────────── │
+                  │ ─────────────── │  │ id (PK)          │
+                  │ id (PK)         │  │ request_id (FK)  │
+                  │ request_id (FK) │  │ technician_id(FK)│
+                  │ from_status     │  │ role (ENUM)      │
+                  │ to_status       │  │ hours            │
+                  │ changed_by      │  │ UQ(req_id,tech_id│
+                  │ changed_at      │  └──────┬───────────┘
+                  └─────────────────┘         │ N
+                                              │
+                                              │ 1
+                                       ┌──────┴──────────┐
+                                       │  technicians    │
+                                       │ ─────────────── │
+                                       │ id (PK)         │
+                                       │ full_name       │
+                                       │ specialization  │
+                                       │ employee_number │
+                                       └─────────────────┘
+```
+
+### Обоснование 3НФ
+
+- **Справочные значения вынесены в отдельные таблицы**: площадки (`sites`), специалисты (`technicians`), оборудование (`equipment`). Нет дублирования названий, регионов, ФИО.
+- **Все неключевые поля зависят только от первичного ключа** — нет транзитивных зависимостей.
+- **Связь N:M** между заявками и специалистами реализована через связующую таблицу `request_assignees`, в которой хранятся **дополнительные поля** (`role`, `hours`) — классическая реализация N:M с атрибутами.
+- **Связь 1:1** `equipment ↔ equipment_passports` обеспечена уникальным внешним ключом `equipment_id` в таблице паспортов.
+
+### Правила ON DELETE / ON UPDATE
+
+| Связь | ON DELETE | ON UPDATE | Почему |
+|---|---|---|---|
+| `equipment.site_id → sites.id` | `RESTRICT` | `CASCADE` | Нельзя удалить площадку, пока на ней есть оборудование |
+| `equipment_passports.equipment_id → equipment.id` | `CASCADE` | `CASCADE` | Паспорт не имеет смысла без оборудования |
+| `maintenance_requests.equipment_id → equipment.id` | `RESTRICT` | `CASCADE` | Нельзя удалить оборудование с заявками |
+| `request_status_history.request_id → maintenance_requests.id` | `CASCADE` | `CASCADE` | История не имеет смысла без заявки |
+| `request_assignees.request_id → maintenance_requests.id` | `CASCADE` | `CASCADE` | Назначения удаляются вместе с заявкой |
+| `request_assignees.technician_id → technicians.id` | `RESTRICT` | `CASCADE` | Нельзя удалить специалиста, если он назначен на заявки |
+
 ## Модель данных
 
-### Оборудование (Equipment)
+### Справочники
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `id` | string (uuid) | Генерируется сервером |
-| `name` | string | 3–100 символов |
-| `type` | enum | `turbine` / `inverter` / `sensor` / `substation` |
-| `serialNumber` | string | Уникальный в системе |
-| `location` | object | `{ lat: -90..90, lon: -180..180 }` |
-| `status` | enum | `operational` / `maintenance` / `fault` / `decommissioned` |
-| `installedAt` | ISO date | Не в будущем |
-| `createdAt`, `updatedAt` | ISO datetime | Проставляются сервером |
+- **sites** — площадки: `id, name, code (unique), region, latitude, longitude`
+- **technicians** — специалисты: `id, full_name, specialization, employee_number (unique)`
 
-### Заявка (Maintenance Request)
+### Оборудование
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `id` | string (uuid) | Генерируется сервером |
-| `equipmentId` | string (uuid) | Ссылка на существующее оборудование |
-| `title` | string | 5–120 символов |
-| `description` | string | До 2000 символов |
-| `priority` | enum | `low` / `medium` / `high` / `critical` |
-| `status` | enum | `new` / `in_progress` / `done` / `rejected` |
-| `plannedAt` | ISO datetime | Опционально |
-| `createdAt`, `updatedAt` | ISO datetime | Проставляются сервером |
+- **equipment** — единицы: `id, site_id, name, type, serial_number (unique), status, installed_at`
+- **equipment_passports** — паспорта (1:1): `id, equipment_id (unique), manufacturer, model, rated_power_kw, last_inspection_date`
+
+### Заявки
+
+- **maintenance_requests** — заявки: `id, equipment_id, title, description, priority, status, planned_at, created_at, updated_at`
+- **request_status_history** — история статусов (1:N): `id, request_id, from_status, to_status, changed_by, comment, changed_at`
+- **request_assignees** — назначения (N:M): `id, request_id, technician_id, role, hours` + `UNIQUE(request_id, technician_id)`
 
 ### Переходы статусов заявки
 
@@ -91,7 +231,7 @@ new ──► in_progress ──► done
  └──► rejected ◄───────┘
 ```
 
-Любой другой переход отклоняется с **409 Conflict**.
+Любой другой переход отклоняется с **409**. Переход в `in_progress` **запрещён**, если у заявки **нет назначенной бригады** (409).
 
 ## Эндпоинты
 
@@ -107,26 +247,40 @@ new ──► in_progress ──► done
 |---|---|---|
 | GET | `/api/equipment` | Список с фильтрами, сортировкой, пагинацией |
 | POST | `/api/equipment` | Создание |
-| GET | `/api/equipment/:id` | Карточка |
+| GET | `/api/equipment/:id` | Карточка (с `site`, `passport`) |
 | PATCH | `/api/equipment/:id` | Частичное обновление |
-| DELETE | `/api/equipment/:id` | Удаление (запрещено при открытых заявках) |
+| DELETE | `/api/equipment/:id` | Удаление (запрещено при заявках) |
 | GET | `/api/equipment/:id/requests` | Заявки по оборудованию |
-| GET | `/api/equipment/:id/weather` | Прогноз и пригодность окна для работ |
-
-Query-параметры списка: `status`, `type`, `sort`, `order`, `page`, `limit`.
+| GET | `/api/equipment/:id/weather` | Прогноз и пригодность окна |
 
 ### Requests
 
 | Метод | Путь | Назначение |
 |---|---|---|
-| GET | `/api/requests` | Список с фильтрами, сортировкой, пагинацией |
+| GET | `/api/requests` | Список с фильтрами |
 | POST | `/api/requests` | Создание |
-| GET | `/api/requests/:id` | Карточка |
+| GET | `/api/requests/:id` | Карточка (с `equipment`, `assignees`, `statusHistory`) |
 | PATCH | `/api/requests/:id` | Редактирование полей |
-| PATCH | `/api/requests/:id/status` | Смена статуса с проверкой переходов |
+| PATCH | `/api/requests/:id/status` | Смена статуса (транзакция + история) |
 | DELETE | `/api/requests/:id` | Удаление |
+| GET | `/api/requests/:id/history` | История статусов |
+| GET | `/api/requests/:id/assignees` | Состав бригады |
+| POST | `/api/requests/:id/assignees` | Назначение бригады |
+| DELETE | `/api/requests/:id/assignees/:userId` | Снять специалиста |
 
-Query-параметры списка: `equipmentId`, `status`, `priority`, `createdFrom`, `createdTo`, `plannedFrom`, `plannedTo`, `sort`, `order`, `page`, `limit`.
+### Sites
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| GET | `/api/sites/:id/summary` | Сводка: количество по статусам, приоритетам, среднее время закрытия |
+
+### Reports
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| GET | `/api/reports/equipment-load` | Нагрузка по оборудованию (raw SQL) |
+
+Query-параметры для `equipment-load`: `from`, `to` (даты), `minRequests` (число).
 
 ## Формат ответов
 
@@ -152,164 +306,134 @@ Query-параметры списка: `equipmentId`, `status`, `priority`, `cre
 }
 ```
 
-## Коды ответов
+## HTTP-коды
 
 | Код | Когда |
 |---|---|
 | 200 | Успех |
 | 201 | Создано (+ заголовок `Location`) |
 | 204 | Удалено (без тела) |
-| 400 | Битый JSON, невалидный UUID в path, ошибка в query |
-| 404 | Ресурс не найден |
-| 409 | Дубль `serialNumber`, недопустимый переход статуса, удаление с открытыми заявками |
+| 400 | Битый JSON, невалидный UUID, ошибка в query |
+| 404 | Ресурс не найден / нарушение FK |
+| 409 | Дублирование, недопустимый переход, удаление связанных данных |
 | 413 | Тело запроса больше 100 KB |
 | 422 | Данные тела не проходят правила |
-| 429 | Превышен rate limit |
-| 502 | Внешний сервис погоды недоступен |
-| 504 | Таймаут внешнего сервиса погоды |
+| 429 | Rate limit |
+| 502 | Внешний сервис недоступен |
+| 504 | Таймаут внешнего сервиса |
 
-## Правило пригодности для наружных работ
+## Транзакции
 
-Погодный сервис возвращает **почасовой** прогноз. Окно считается пригодным, если **все часы** удовлетворяют:
+### Смена статуса заявки (`PATCH /api/requests/:id/status`)
 
-- ветер ≤ `WEATHER_MAX_WIND_MS` (по умолчанию 10 м/с)
-- осадки = `WEATHER_MAX_PRECIP_MM` (по умолчанию 0 мм)
+1. Открывается транзакция (`sequelize.transaction`).
+2. Строка заявки **блокируется** (`SELECT ... FOR UPDATE`).
+3. Проверяется текущий статус и допустимость перехода.
+4. Проверяется наличие бригады при переходе в `in_progress`.
+5. Обновляется заявка.
+6. Создаётся запись в `request_status_history`.
+7. Транзакция коммитится. При ошибке — **rollback**, БД остаётся в прежнем состоянии.
 
-Ответ содержит `suitable`, `reasons`, `rules`, `forecast` (каждый час со своим `suitable` и `reasons`).
+### Назначение бригады (`POST /api/requests/:id/assignees`)
 
-## Примеры
+1. Валидация бизнес-правил (ровно один `lead`) **до** транзакции.
+2. Проверка существования заявки и специалистов.
+3. Транзакция: **удаление старых назначений** + **вставка новых**.
+4. При ошибке — **rollback**, старые назначения не теряются.
 
-### Создание оборудования
+## Аналитические отчёты
 
-```bash
-curl -X POST http://localhost:3000/api/equipment \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Turbine A1",
-    "type": "turbine",
-    "serialNumber": "SN-001",
-    "location": { "lat": 55.75, "lon": 37.61 },
-    "installedAt": "2024-01-15T00:00:00.000Z"
-  }'
-```
+### Сводка по площадке (`GET /api/sites/:id/summary`)
 
-Ответ `201 Created`, заголовок `Location: /api/equipment/<uuid>`.
+Возвращает:
+- `totalRequests` — всего заявок на оборудовании площадки
+- `byStatus` — количество по статусам (`new`, `in_progress`, `done`, `rejected`)
+- `byPriority` — количество по приоритетам
+- `avgCloseHours` — среднее время от создания до закрытия (для заявок `done`), в часах
 
-### Создание заявки
+Реализовано через **raw SQL** с агрегатами и `GROUP BY`.
 
-```bash
-curl -X POST http://localhost:3000/api/requests \
-  -H "Content-Type: application/json" \
-  -d '{
-    "equipmentId": "<equipment-uuid>",
-    "title": "Плановое ТО",
-    "priority": "high",
-    "plannedAt": "2026-10-01T10:00:00.000Z"
-  }'
-```
+### Отчёт по нагрузке (`GET /api/reports/equipment-load`)
 
-### Смена статуса
+Возвращает по каждой единице оборудования:
+- `totalRequests` — всего заявок
+- `closedRequests` — закрытых заявок
+- `totalPlannedHours` — суммарные плановые трудозатраты (часы)
+- `lastInspectionDate` — дата последней поверки (из паспорта)
 
-```bash
-curl -X PATCH http://localhost:3000/api/requests/<id>/status \
-  -H "Content-Type: application/json" \
-  -d '{ "status": "in_progress" }'
-```
+Поддерживает параметры:
+- `from`, `to` — период по дате создания заявки
+- `minRequests` — минимальное число заявок (фильтр групп через `HAVING`)
 
-Недопустимый переход → **409**.
-
-### Прогноз погоды
-
-```bash
-curl "http://localhost:3000/api/equipment/<id>/weather?hours=6"
-```
-
-Ответ `200`:
-```json
-{
-  "data": {
-    "location": { "lat": 55.75, "lon": 37.61 },
-    "hours": 6,
-    "rules": { "maxWindMs": 10, "maxPrecipMm": 0 },
-    "suitable": true,
-    "reasons": [],
-    "forecast": [ { "time": "...", "windSpeedMs": 3.2, "precipitationMm": 0, "suitable": true, "reasons": [] } ]
-  }
-}
-```
-
-### Ошибка валидации
-
-```bash
-curl -X POST http://localhost:3000/api/equipment \
-  -H "Content-Type: application/json" \
-  -d '{ "name": "" }'
-```
-
-Ответ `422`:
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Некорректные данные запроса",
-    "details": [ { "field": "name", "message": "\"name\" is not allowed to be empty" } ],
-    "requestId": "..."
-  }
-}
-```
+Реализовано через **raw SQL** (`JOIN`, `GROUP BY`, `HAVING`, `COUNT FILTER`) с параметрами привязки (`replacements`).
 
 ## Безопасность
 
-- **CORS**: разрешённые источники задаются через `CORS_ORIGINS` (не `*`). По умолчанию — только `http://localhost:3000`. В Postman/curl без заголовка `Origin` CORS не применяется.
-- **Rate limiting**: применяется на `/api`, окно и лимит — из env. При превышении возвращается **429** с заголовками лимита.
-- **Helmet**: набор защитных HTTP-заголовков.
+- **CORS**: whitelist из `CORS_ORIGINS`, не `*`.
+- **Helmet**: защитные HTTP-заголовки.
+- **Rate limit**: на `/api`, окно и лимит из env. При превышении — **429** с заголовками `RateLimit-*`.
 - **Размер тела**: JSON ограничен 100 KB, при превышении — **413**.
-- **Cookie не используются**: API stateless, аутентификация не предусмотрена. Если бы использовались — выбрали бы `HttpOnly` (защита от чтения через JS), `Secure` (только по HTTPS), `SameSite=Lax` (защита от CSRF при переходах с внешних сайтов).
-- **Секреты** хранятся в `.env`, файл игнорируется Git. Стек-трейсы не попадают в ответы в режиме `production`.
+- **SQL-инъекции**: все прямые SQL-запросы используют **bind-параметры** (`replacements`). Поля сортировки проверяются по **белому списку** (нельзя подставить `ORDER BY` из query).
+- **Cookie не используются** — API stateless.
 
 ## Логирование
 
-Каждый запрос логируется с указанием метода, пути, кода ответа, длительности и `requestId`. Ошибки уровня 5xx пишутся с уровнем `error`, 4xx — `warn`, успешные — `info`.
+Каждый запрос логируется с указанием метода, пути, кода ответа, длительности и `requestId`. Уровни:
+- `info` — успешные запросы
+- `warn` — 4xx
+- `error` — 5xx
 
-`requestId` возвращается в теле ошибок и в заголовке `X-Request-Id`, что позволяет найти запись в логе.
+`requestId` возвращается в теле ошибок и в заголовке `X-Request-Id`.
 
 ## Структура проекта
 
 ```
 src/
-  app.js            — сборка Express-приложения (createApp)
-  server.js         — запуск сервера
-  config/           — чтение переменных окружения
-  domain/           — константы: статусы, приоритеты, переходы
-  errors/           — классы ошибок (AppError, NotFoundError, ConflictError и др.)
-  middlewares/      — requestId, logger, validate, notFound, errorHandler
-  repositories/     — доступ к данным (JSON-файлы)
-  services/         — бизнес-логика (equipment, requests, weather)
-  controllers/      — обработчики маршрутов
-  routes/           — Express-роутеры
-  validators/       — Joi-схемы
-  utils/            — вспомогательные функции (asyncHandler)
-docs/
-  postman/          — экспортированная Postman-коллекция
-data/               — JSON-файлы (оборудование, заявки)
+  app.js                — сборка Express-приложения (createApp)
+  server.js             — запуск сервера
+  config/               — чтение env
+  domain/               — константы (статусы, переходы, роли, правила)
+  errors/               — классы ошибок (AppError, NotFoundError, ...)
+  middlewares/          — requestId, logger, validate, notFound, errorHandler
+  repositories/         — доступ к данным через Sequelize
+  services/             — бизнес-логика (equipment, requests, assignees, reports, weather)
+  controllers/          — обработчики HTTP
+  routes/               — Express-роутеры
+  validators/           — Joi-схемы
+  utils/                — asyncHandler
+
+models/                 — Sequelize-модели + ассоциации
+migrations/             — миграции (CJS)
+seeders/                — сиды (CJS)
+config/                 — конфиг для Sequelize CLI
+docs/postman/           — экспортированная коллекция
+docker-compose.yml      — PostgreSQL 16 + healthcheck + том
 ```
 
 ## Слоистая архитектура
 
 ```
-routes → controllers → services → repositories
+routes → controllers → services → repositories → Sequelize → PostgreSQL
 ```
 
-- **routes** — маршруты и подключение middleware валидации.
+- **routes** — маршруты и валидация.
 - **controllers** — тонкие: берут `req.validated`, вызывают сервис, отдают ответ.
-- **services** — бизнес-логика: проверки, переходы статусов, вызовы внешнего API.
-- **repositories** — единственное место, где есть файловые операции. Замена на PostgreSQL затрагивает только этот слой.
+- **services** — бизнес-логика, транзакции, вызовы внешнего API.
+- **repositories** — единственное место, где выполняются SQL-запросы через Sequelize.
 
-## Postman-коллекция
+## Тестирование в Postman
 
-Экспортированная коллекция лежит в `docs/postman/wind-farm-api.postman_collection.json`. Импортируется в Postman через **File → Import**.
+Коллекция лежит в `docs/postman/wind-farm-api.postman_collection.json`. Импортируется через **File → Import**.
 
-Содержит запросы по ресурсам (Health, Equipment, Requests, Negative extra, Weather) с автотестами `pm.test` на код и структуру ответа.
+Содержит папки:
+- **Health**
+- **Equipment**
+- **Requests**
+- **Negative extra** (400, 413)
+- **Assignees & Reports** — новые эндпоинты
+- **Wind Farm API** — корневые запросы
+
+Все запросы содержат тесты `pm.test` на код ответа и структуру.
 
 ## Лицензия
 
