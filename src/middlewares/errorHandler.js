@@ -1,4 +1,9 @@
 import {
+  UniqueConstraintError,
+  ForeignKeyConstraintError,
+  ValidationError as SequelizeValidationError,
+} from 'sequelize';
+import {
   AppError,
   BadRequestError,
   ValidationError,
@@ -28,7 +33,27 @@ export function errorHandler(err, req, res, _next) {
   let message = 'Внутренняя ошибка сервера';
   let details;
 
-  if (err instanceof AppError) {
+  if (err instanceof UniqueConstraintError) {
+    statusCode = 409;
+    code = 'CONFLICT';
+    message = 'Нарушение уникальности: запись с такими данными уже существует';
+    details = err.errors?.map((e) => ({
+      field: e.path,
+      message: e.message,
+    }));
+  } else if (err instanceof ForeignKeyConstraintError) {
+    statusCode = 404;
+    code = 'NOT_FOUND';
+    message = 'Связанная запись не найдена';
+  } else if (err instanceof SequelizeValidationError) {
+    statusCode = 422;
+    code = 'VALIDATION_ERROR';
+    message = 'Данные не прошли валидацию';
+    details = err.errors?.map((e) => ({
+      field: e.path,
+      message: e.message,
+    }));
+  } else if (err instanceof AppError) {
     code = err.code;
     statusCode = STATUS_MAP[err.code] ?? 500;
     message = err.message;
