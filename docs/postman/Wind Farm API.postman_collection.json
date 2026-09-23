@@ -448,7 +448,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"name\": \"Turbine A4\",\r\n  \"type\": \"turbine\",\r\n  \"serialNumber\": \"SN-004\",\r\n  \"location\": { \"lat\": 55.78, \"lon\": 37.64 },\r\n  \"installedAt\": \"2024-04-05T00:00:00.000Z\"\r\n}",
+          "raw": "{\r\n  \"name\": \"Turbine A6\",\r\n  \"type\": \"turbine\",\r\n  \"serialNumber\": \"SN-006\",\r\n  \"location\": { \"lat\": 55.80, \"lon\": 37.66 },\r\n  \"installedAt\": \"2024-06-01T00:00:00.000Z\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
