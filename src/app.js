@@ -9,6 +9,8 @@ import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import requestsRoutes from './routes/requests.routes.js';
+import sitesRoutes from './routes/sites.routes.js';
+import reportsRoutes from './routes/reports.routes.js';
 
 export function createApp() {
   const app = express();
@@ -58,9 +60,13 @@ export function createApp() {
   app.use(logger);
 
   // 6. Routes
-  app.get('/api/health', (req, res) => res.json({ status: 'ok', requestId: req.id }));
+  app.get('/api/health', (req, res) =>
+    res.json({ status: 'ok', requestId: req.id }),
+  );
   app.use('/api/equipment', equipmentRoutes);
   app.use('/api/requests', requestsRoutes);
+  app.use('/api/sites', sitesRoutes);
+  app.use('/api/reports', reportsRoutes);
 
   // 7. 404 and error handler (must be last!)
   app.use(notFound);

@@ -43,4 +43,9 @@ export const requestsController = {
     await requestsService.remove(req.validated.params.id);
     res.status(204).end();
   }),
+
+  history: asyncHandler(async (req, res) => {
+    const items = await requestsService.getHistory(req.validated.params.id);
+    res.json({ data: items });
+  }),
 };

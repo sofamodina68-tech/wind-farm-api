@@ -1,3 +1,4 @@
+import assigneesRoutes from './assignees.routes.js';
 import { Router } from 'express';
 import { requestsController } from '../controllers/requests.controller.js';
 import { validate } from '../middlewares/validate.js';
@@ -40,6 +41,16 @@ router.delete(
   '/:id',
   validate({ params: idParamSchema }),
   requestsController.remove,
+);
+
+// Вложенный ресурс: /api/requests/:id/assignees
+router.use('/:id/assignees', assigneesRoutes);
+
+// История статусов: /api/requests/:id/history
+router.get(
+  '/:id/history',
+  validate({ params: idParamSchema }),
+  requestsController.history,
 );
 
 export default router;
