@@ -18,21 +18,31 @@ export function createApp() {
   // 1. Security headers
   app.use(helmet());
 
-  // 2. CORS with explicit whitelist
+  // 2. Request ID + logger — как можно раньше,
+  //    чтобы все дальнейшие ответы (429, 413, 400, CORS) имели requestId
+  //    и попадали в лог.
+  app.use(requestId);
+  app.use(logger);
+
+  // 3. CORS — отклонённые запросы теперь логируются
   app.use(
     cors({
       origin: (origin, cb) => {
         if (!origin || config.corsOrigins.includes(origin)) return cb(null, true);
-        cb(new Error('Not allowed by CORS'));
+        const err = new Error('Not allowed by CORS');
+        err.code = 'CORS_FORBIDDEN';
+        err.statusCode = 403;
+        cb(err);
       },
       methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+      exposedHeaders: ['X-Request-Id', 'Location'],
       credentials: true,
       maxAge: 600,
     }),
   );
 
-  // 3. Rate limiting on /api
+  // 4. Rate limiting на /api — тоже попадает в лог
   app.use(
     '/api',
     rateLimit({
@@ -52,12 +62,8 @@ export function createApp() {
     }),
   );
 
-  // 4. Body parser with size limit
+  // 5. Body parser с ограничением размера
   app.use(express.json({ limit: '100kb' }));
-
-  // 5. Request ID + logger
-  app.use(requestId);
-  app.use(logger);
 
   // 6. Routes
   app.get('/api/health', (req, res) =>
@@ -68,7 +74,7 @@ export function createApp() {
   app.use('/api/sites', sitesRoutes);
   app.use('/api/reports', reportsRoutes);
 
-  // 7. 404 and error handler (must be last!)
+  // 7. 404 и обработчик ошибок — последними
   app.use(notFound);
   app.use(errorHandler);
 
