@@ -1,5 +1,4 @@
-import 'node:process';
-import 'dotenv/config';
+require('dotenv').config();
 
 const base = {
   username: process.env.DB_USER,
@@ -19,7 +18,7 @@ const base = {
   },
 };
 
-export default {
+module.exports = {
   development: base,
   test: { ...base, database: `${base.database}_test` },
   production: base,
