@@ -1,23 +1,27 @@
-import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import { OPEN_REQUEST_STATUSES, PRIORITY_RANK } from '../domain/requests.js';
+import { Op } from 'sequelize';
+import {
+  MaintenanceRequest,
+  Equipment,
+  Technician,
+  RequestAssignee,
+  RequestStatusHistory,
+} from '../../models/index.js';
+import { OPEN_REQUEST_STATUSES } from '../domain/requests.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const FILE = path.join(DATA_DIR, 'requests.json');
+const SORTABLE_FIELDS = ['createdAt', 'updatedAt', 'plannedAt', 'priority'];
 
-async function loadAll() {
-  try {
-    const raw = await readFile(FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
+function serialize(request) {
+  const json = request.toJSON();
+  if (json.assignees) {
+    json.technicians = json.assignees.map((a) => ({
+      id: a.technician?.id,
+      fullName: a.technician?.fullName,
+      specialization: a.technician?.specialization,
+      role: a.role,
+      hours: Number(a.hours),
+    }));
   }
-}
-
-async function saveAll(items) {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(FILE, JSON.stringify(items, null, 2), 'utf-8');
+  return json;
 }
 
 export const requestsRepository = {
@@ -34,91 +38,161 @@ export const requestsRepository = {
     page = 1,
     limit = 20,
   } = {}) {
-    let items = await loadAll();
+    const safeSort = SORTABLE_FIELDS.includes(sort) ? sort : 'createdAt';
+    const safeOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-    if (equipmentId) items = items.filter((r) => r.equipmentId === equipmentId);
-    if (status) items = items.filter((r) => r.status === status);
-    if (priority) items = items.filter((r) => r.priority === priority);
+    const where = {};
+    if (equipmentId) where.equipmentId = equipmentId;
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
 
-    if (createdFrom) items = items.filter((r) => new Date(r.createdAt) >= new Date(createdFrom));
-    if (createdTo) items = items.filter((r) => new Date(r.createdAt) <= new Date(createdTo));
-    if (plannedFrom) items = items.filter((r) => r.plannedAt && new Date(r.plannedAt) >= new Date(plannedFrom));
-    if (plannedTo) items = items.filter((r) => r.plannedAt && new Date(r.plannedAt) <= new Date(plannedTo));
+    if (createdFrom || createdTo) {
+      where.createdAt = {};
+      if (createdFrom) where.createdAt[Op.gte] = new Date(createdFrom);
+      if (createdTo) where.createdAt[Op.lte] = new Date(createdTo);
+    }
 
-    items.sort((a, b) => {
-      let va = a[sort];
-      let vb = b[sort];
+    if (plannedFrom || plannedTo) {
+      where.plannedAt = {};
+      if (plannedFrom) where.plannedAt[Op.gte] = new Date(plannedFrom);
+      if (plannedTo) where.plannedAt[Op.lte] = new Date(plannedTo);
+    }
 
-      if (sort === 'priority') {
-        va = PRIORITY_RANK[va] ?? 0;
-        vb = PRIORITY_RANK[vb] ?? 0;
-      } else if (sort === 'plannedAt' || sort === 'createdAt' || sort === 'updatedAt') {
-        va = va ? new Date(va).getTime() : 0;
-        vb = vb ? new Date(vb).getTime() : 0;
-      }
+    // Сортировка по priority идёт по «весу», а не по алфавиту
+    const orderClause =
+      safeSort === 'priority'
+        ? [
+            [
+              // Используем CASE через Sequelize.literal с белым списком значений
+              MaintenanceRequest.sequelize.literal(
+                `CASE priority
+                   WHEN 'critical' THEN 4
+                   WHEN 'high' THEN 3
+                   WHEN 'medium' THEN 2
+                   WHEN 'low' THEN 1
+                   ELSE 0 END`,
+              ),
+              safeOrder,
+            ],
+          ]
+        : [[safeSort, safeOrder]];
 
-      return (va > vb ? 1 : va < vb ? -1 : 0) * (order === 'asc' ? 1 : -1);
+    const { rows, count } = await MaintenanceRequest.findAndCountAll({
+      where,
+      attributes: [
+        'id',
+        'equipmentId',
+        'title',
+        'description',
+        'priority',
+        'status',
+        'plannedAt',
+        'createdAt',
+        'updatedAt',
+      ],
+      include: [
+        {
+          model: Equipment,
+          as: 'equipment',
+          attributes: ['id', 'name', 'type', 'serialNumber', 'status'],
+        },
+      ],
+      order: orderClause,
+      limit,
+      offset: (page - 1) * limit,
+      distinct: true,
     });
 
-    const total = items.length;
-    const start = (page - 1) * limit;
-    return { data: items.slice(start, start + limit), total, page, limit };
+    return {
+      data: rows.map((r) => r.toJSON()),
+      total: count,
+      page,
+      limit,
+    };
   },
 
   async findById(id) {
-    const items = await loadAll();
-    return items.find((r) => r.id === id) ?? null;
+    const request = await MaintenanceRequest.findByPk(id, {
+      include: [
+        {
+          model: Equipment,
+          as: 'equipment',
+          attributes: ['id', 'name', 'type', 'serialNumber', 'status'],
+        },
+        {
+          model: RequestAssignee,
+          as: 'assignees',
+          include: [
+            {
+              model: Technician,
+              as: 'technician',
+              attributes: ['id', 'fullName', 'specialization', 'employeeNumber'],
+            },
+          ],
+        },
+        {
+          model: RequestStatusHistory,
+          as: 'statusHistory',
+        },
+      ],
+    });
+    return request ? serialize(request) : null;
   },
 
   async findByEquipmentId(equipmentId) {
-    const items = await loadAll();
-    return items.filter((r) => r.equipmentId === equipmentId);
+    const items = await MaintenanceRequest.findAll({
+      where: { equipmentId },
+      order: [['createdAt', 'DESC']],
+    });
+    return items.map((r) => r.toJSON());
   },
 
   async countOpenByEquipmentId(equipmentId) {
-    const items = await loadAll();
-    return items.filter(
-      (r) => r.equipmentId === equipmentId && OPEN_REQUEST_STATUSES.includes(r.status),
-    ).length;
+    return MaintenanceRequest.count({
+      where: {
+        equipmentId,
+        status: { [Op.in]: OPEN_REQUEST_STATUSES },
+      },
+    });
   },
 
   async deleteByEquipmentId(equipmentId) {
-    const items = await loadAll();
-    const filtered = items.filter((r) => r.equipmentId !== equipmentId);
-    await saveAll(filtered);
-    return items.length - filtered.length;
+    return MaintenanceRequest.destroy({
+      where: { equipmentId },
+    });
   },
 
   async create(data) {
-    const items = await loadAll();
-    const now = new Date().toISOString();
-    const request = {
-      id: randomUUID(),
-      ...data,
+    const payload = { ...data };
+    delete payload.id;
+    delete payload.createdAt;
+    delete payload.updatedAt;
+    delete payload.status;
+
+    const request = await MaintenanceRequest.create({
+      ...payload,
       status: 'new',
-      createdAt: now,
-      updatedAt: now,
-    };
-    items.push(request);
-    await saveAll(items);
-    return request;
+    });
+    return request.toJSON();
   },
 
   async update(id, patch) {
-    const items = await loadAll();
-    const idx = items.findIndex((r) => r.id === id);
-    if (idx === -1) return null;
-    items[idx] = { ...items[idx], ...patch, updatedAt: new Date().toISOString() };
-    await saveAll(items);
-    return items[idx];
+    const request = await MaintenanceRequest.findByPk(id);
+    if (!request) return null;
+
+    const payload = { ...patch };
+    delete payload.id;
+    delete payload.createdAt;
+    delete payload.updatedAt;
+
+    await request.update(payload);
+    return request.toJSON();
   },
 
   async remove(id) {
-    const items = await loadAll();
-    const idx = items.findIndex((r) => r.id === id);
-    if (idx === -1) return false;
-    items.splice(idx, 1);
-    await saveAll(items);
+    const request = await MaintenanceRequest.findByPk(id);
+    if (!request) return false;
+    await request.destroy();
     return true;
   },
 };

@@ -1,81 +1,142 @@
-import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import path from 'node:path';
+import {
+  Equipment,
+  EquipmentPassport,
+  Site,
+} from '../../models/index.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const FILE = path.join(DATA_DIR, 'equipment.json');
+const SORTABLE_FIELDS = ['name', 'installedAt', 'status', 'type'];
 
-async function loadAll() {
-  try {
-    const raw = await readFile(FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
+function serialize(equipment) {
+  const json = equipment.toJSON();
+  // Совместимость с Кейсом 2: отдаём location в формате { lat, lon }
+  if (json.site) {
+    json.location = {
+      lat: Number(json.site.latitude),
+      lon: Number(json.site.longitude),
+    };
   }
-}
-
-async function saveAll(items) {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(FILE, JSON.stringify(items, null, 2), 'utf-8');
+  return json;
 }
 
 export const equipmentRepository = {
-  async findAll({ status, type, sort = 'name', order = 'asc', page = 1, limit = 20 } = {}) {
-    let items = await loadAll();
-    if (status) items = items.filter((e) => e.status === status);
-    if (type) items = items.filter((e) => e.type === type);
+  async findAll({
+    status,
+    type,
+    sort = 'name',
+    order = 'asc',
+    page = 1,
+    limit = 20,
+  } = {}) {
+    const safeSort = SORTABLE_FIELDS.includes(sort) ? sort : 'name';
+    const safeOrder = order === 'desc' ? 'DESC' : 'ASC';
 
-    items.sort((a, b) => {
-      const va = a[sort] ?? '';
-      const vb = b[sort] ?? '';
-      return (va > vb ? 1 : -1) * (order === 'asc' ? 1 : -1);
+    const where = {};
+    if (status) where.status = status;
+    if (type) where.type = type;
+
+    const { rows, count } = await Equipment.findAndCountAll({
+      where,
+      include: [
+        {
+          model: Site,
+          as: 'site',
+          attributes: ['id', 'name', 'code', 'region', 'latitude', 'longitude'],
+        },
+      ],
+      attributes: [
+        'id',
+        'siteId',
+        'name',
+        'type',
+        'serialNumber',
+        'status',
+        'installedAt',
+        'createdAt',
+        'updatedAt',
+      ],
+      order: [[safeSort, safeOrder]],
+      limit,
+      offset: (page - 1) * limit,
+      distinct: true,
     });
 
-    const total = items.length;
-    const start = (page - 1) * limit;
-    return { data: items.slice(start, start + limit), total, page, limit };
+    return {
+      data: rows.map(serialize),
+      total: count,
+      page,
+      limit,
+    };
   },
 
   async findById(id) {
-    const items = await loadAll();
-    return items.find((e) => e.id === id) ?? null;
+    const equipment = await Equipment.findByPk(id, {
+      include: [
+        {
+          model: Site,
+          as: 'site',
+          attributes: ['id', 'name', 'code', 'region', 'latitude', 'longitude'],
+        },
+        {
+          model: EquipmentPassport,
+          as: 'passport',
+        },
+      ],
+    });
+    return equipment ? serialize(equipment) : null;
   },
 
   async findBySerialNumber(serialNumber) {
-    const items = await loadAll();
-    return items.find((e) => e.serialNumber === serialNumber) ?? null;
+    const equipment = await Equipment.findOne({
+      where: { serialNumber },
+      include: [
+        {
+          model: Site,
+          as: 'site',
+          attributes: ['id', 'name', 'code', 'region', 'latitude', 'longitude'],
+        },
+      ],
+    });
+    return equipment ? serialize(equipment) : null;
   },
 
   async create(data) {
-    const items = await loadAll();
-    const now = new Date().toISOString();
-    const equipment = {
-      id: randomUUID(),
-      status: data.status ?? 'operational',
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    };
-    items.push(equipment);
-    await saveAll(items);
-    return equipment;
+    let siteId = data.siteId;
+    if (!siteId) {
+      const defaultSite = await Site.findOne({ order: [['createdAt', 'ASC']] });
+      if (!defaultSite) {
+        throw new Error('Нет ни одной площадки. Сначала создайте Site.');
+      }
+      siteId = defaultSite.id;
+    }
+
+    const payload = { ...data, siteId };
+    delete payload.id;
+    delete payload.location; // location из Кейса 2 не нужен — координаты в Site
+    delete payload.createdAt;
+    delete payload.updatedAt;
+
+    const equipment = await Equipment.create(payload);
+    return this.findById(equipment.id);
   },
 
   async update(id, patch) {
-    const items = await loadAll();
-    const idx = items.findIndex((e) => e.id === id);
-    if (idx === -1) return null;
-    items[idx] = { ...items[idx], ...patch, updatedAt: new Date().toISOString() };
-    await saveAll(items);
-    return items[idx];
+    const equipment = await Equipment.findByPk(id);
+    if (!equipment) return null;
+
+    const payload = { ...patch };
+    delete payload.id;
+    delete payload.location;
+    delete payload.createdAt;
+    delete payload.updatedAt;
+
+    await equipment.update(payload);
+    return this.findById(id);
   },
 
   async remove(id) {
-    const items = await loadAll();
-    const idx = items.findIndex((e) => e.id === id);
-    if (idx === -1) return false;
-    items.splice(idx, 1);
-    await saveAll(items);
+    const equipment = await Equipment.findByPk(id);
+    if (!equipment) return false;
+    await equipment.destroy();
     return true;
   },
 };
