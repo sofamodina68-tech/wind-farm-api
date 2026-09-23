@@ -22,6 +22,7 @@ const STATUS_MAP = {
   INVALID_JSON: 400,
   BAD_GATEWAY: 502,
   GATEWAY_TIMEOUT: 504,
+  CORS_FORBIDDEN: 403,
   INTERNAL_ERROR: 500,
 };
 
@@ -33,7 +34,12 @@ export function errorHandler(err, req, res, _next) {
   let message = 'Внутренняя ошибка сервера';
   let details;
 
-  if (err instanceof UniqueConstraintError) {
+  // CORS-ошибка от библиотеки cors → 403 (а не 500)
+  if (err.code === 'CORS_FORBIDDEN' || err.message === 'Not allowed by CORS') {
+    statusCode = 403;
+    code = 'CORS_FORBIDDEN';
+    message = 'Источник запроса не разрешён';
+  } else if (err instanceof UniqueConstraintError) {
     statusCode = 409;
     code = 'CONFLICT';
     message = 'Нарушение уникальности: запись с такими данными уже существует';
