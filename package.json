@@ -6,9 +6,14 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node --env-file=.env src/server.js",
-    "dev": "node --env-file=.env --watch src/server.js",
-    "test": "node --test"
+  "start": "node --env-file=.env src/server.js",
+  "dev": "node --env-file=.env --watch src/server.js",
+  "test": "node --test",
+  "db:migrate": "sequelize-cli db:migrate --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+  "db:migrate:undo": "sequelize-cli db:migrate:undo --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+  "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+  "db:seed": "sequelize-cli db:seed:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+  "db:seed:undo:all": "sequelize-cli db:seed:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models"
   },
   "dependencies": {
     "cors": "^2.8.5",
