@@ -127,7 +127,12 @@
           ],
           "request": {
             "method": "PATCH",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{ \"status\": \"in_progress\" }",
@@ -138,7 +143,7 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status?Content-Type=application/json",
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -147,12 +152,6 @@
                 "requests",
                 "{{requestId}}",
                 "status"
-              ],
-              "query": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
               ]
             }
           },
@@ -389,6 +388,185 @@
               "path": [
                 "api",
                 "equipment"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Assignees & Reports",
+      "item": [
+        {
+          "name": "Get Assignees",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Is array', () => {\r\n  pm.expect(pm.response.json().data).to.be.an('array');\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "{{requestId}}",
+                "assignees"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Has lead and member', () => {\r\n  const list = pm.response.json().data;\r\n  pm.expect(list.some(a => a.role === 'lead')).to.be.true;\r\n  pm.expect(list.some(a => a.role === 'member')).to.be.true;\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"technicians\": [\r\n    { \"technicianId\": \"a1111111-1111-1111-1111-111111111111\", \"role\": \"lead\", \"hours\": 8 }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "{{requestId}}",
+                "assignees"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Site Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Has byStatus and avgCloseHours', () => {\r\n  const d = pm.response.json().data;\r\n  pm.expect(d).to.have.property('byStatus');\r\n  pm.expect(d).to.have.property('byPriority');\r\n  pm.expect(d).to.have.property('avgCloseHours');\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites/11111111-1111-1111-1111-111111111111/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites",
+                "11111111-1111-1111-1111-111111111111",
+                "summary"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Request History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Is array', () => {\r\n  pm.expect(pm.response.json().data).to.be.an('array');\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "{{requestId}}",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Equipment Load Report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));\r\npm.test('Has fields', () => {\r\n  const list = pm.response.json().data;\r\n  pm.expect(list).to.be.an('array');\r\n  if (list.length > 0) {\r\n    pm.expect(list[0]).to.have.property('totalRequests');\r\n    pm.expect(list[0]).to.have.property('closedRequests');\r\n    pm.expect(list[0]).to.have.property('totalPlannedHours');\r\n  }\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/equipment-load?minRequests=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "equipment-load"
+              ],
+              "query": [
+                {
+                  "key": "minRequests",
+                  "value": "1"
+                }
               ]
             }
           },
@@ -699,7 +877,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/weather",
+          "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/weather?hours=999",
           "host": [
             "{{baseUrl}}"
           ],
@@ -708,6 +886,12 @@
             "equipment",
             "{{equipmentId}}",
             "weather"
+          ],
+          "query": [
+            {
+              "key": "hours",
+              "value": "999"
+            }
           ]
         }
       },
@@ -725,6 +909,10 @@
     },
     {
       "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "siteId",
       "value": ""
     }
   ]
