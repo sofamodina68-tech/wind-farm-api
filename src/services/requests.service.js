@@ -6,7 +6,11 @@ import {
 } from '../../models/index.js';
 import { requestsRepository } from '../repositories/requests.repository.js';
 import { equipmentRepository } from '../repositories/equipment.repository.js';
-import { NotFoundError, ConflictError } from '../errors/AppError.js';
+import {
+  NotFoundError,
+  ConflictError,
+  ForbiddenError,
+} from '../errors/AppError.js';
 import { STATUS_TRANSITIONS } from '../domain/requests.js';
 
 export const requestsService = {
@@ -46,7 +50,7 @@ export const requestsService = {
     return requestsRepository.update(id, payload);
   },
 
-  async changeStatus(id, nextStatus, changedBy = 'api') {
+  async changeStatus(id, nextStatus, changedBy = 'api', user = null) {
     return sequelize.transaction(async (t) => {
       // Блокируем строку заявки — защита от конкурентного изменения
       const request = await MaintenanceRequest.findByPk(id, {
@@ -56,6 +60,29 @@ export const requestsService = {
 
       if (!request) {
         throw new NotFoundError('Заявка не найдена');
+      }
+
+      // Проверка прав: technician может менять статус только своих заявок
+      if (user && user.role === 'technician') {
+        if (!user.technicianId) {
+          throw new ForbiddenError(
+            'Учётная запись technician не привязана к специалисту',
+          );
+        }
+
+        const isAssigned = await RequestAssignee.findOne({
+          where: {
+            requestId: id,
+            technicianId: user.technicianId,
+          },
+          transaction: t,
+        });
+
+        if (!isAssigned) {
+          throw new ForbiddenError(
+            'Вы можете менять статус только тех заявок, на которые назначены',
+          );
+        }
       }
 
       const currentStatus = request.status;
