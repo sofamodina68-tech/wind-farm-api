@@ -17,6 +17,9 @@ import authRoutes from './routes/auth.routes.js';
 export function createApp() {
   const app = express();
 
+  // Trust proxy (Nginx) — чтобы req.ip и rate limit видели реальный IP клиента
+app.set('trust proxy', 1);
+
   // 1. Security headers
   app.use(helmet());
 
