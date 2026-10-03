@@ -7,8 +7,9 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    # НЕ публикуем порт 5432 наружу — БД доступна только внутри сети
+    expose:
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +17,96 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - windfarm
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wind-farm-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_POOL_MIN: 0
+      DB_POOL_MAX: 10
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX}
+      WEATHER_API_URL: ${WEATHER_API_URL}
+      GEOCODING_API_URL: ${GEOCODING_API_URL}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS}
+      WEATHER_MAX_WIND_MS: ${WEATHER_MAX_WIND_MS}
+      WEATHER_MAX_PRECIP_MM: ${WEATHER_MAX_PRECIP_MM}
+      WEATHER_FORECAST_HOURS: ${WEATHER_FORECAST_HOURS}
+      LOG_LEVEL: ${LOG_LEVEL}
+    expose:
+      - "3000"
+    # порт наружу не публикуем — доступ только через nginx
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - windfarm
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: wind-farm-nginx
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - windfarm
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: wind-farm-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    expose:
+      - "3000"
+    networks:
+      - windfarm
 
 volumes:
   pgdata:
+  grafana_data:
+
+networks:
+  windfarm:
+    driver: bridge
