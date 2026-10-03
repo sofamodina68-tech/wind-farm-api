@@ -6,22 +6,25 @@
     "node": ">=20"
   },
   "scripts": {
-  "start": "node --env-file=.env src/server.js",
-  "dev": "node --env-file=.env --watch src/server.js",
-  "test": "node --test",
-  "db:migrate": "sequelize-cli db:migrate --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
-  "db:migrate:undo": "sequelize-cli db:migrate:undo --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
-  "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
-  "db:seed": "sequelize-cli db:seed:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
-  "db:seed:undo:all": "sequelize-cli db:seed:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models"
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "test": "node --test",
+    "db:migrate": "sequelize-cli db:migrate --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+    "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+    "db:seed": "sequelize-cli db:seed:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models",
+    "db:seed:undo:all": "sequelize-cli db:seed:undo:all --config config/config.cjs --migrations-path migrations --seeders-path seeders --models-path models"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^18.0.3",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8"
