@@ -7,7 +7,6 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    # НЕ публикуем порт 5432 наружу — БД доступна только внутри сети
     expose:
       - "5432"
     volumes:
@@ -58,7 +57,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
     expose:
       - "3000"
-    # порт наружу не публикуем — доступ только через nginx
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -88,16 +86,44 @@ services:
     networks:
       - windfarm
 
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: wind-farm-prometheus
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    expose:
+      - "9090"
+    networks:
+      - windfarm
+
   grafana:
     image: grafana/grafana:11.2.0
     container_name: wind-farm-grafana
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
     expose:
       - "3000"
     networks:
@@ -106,6 +132,7 @@ services:
 volumes:
   pgdata:
   grafana_data:
+  prometheus_data:
 
 networks:
   windfarm:
