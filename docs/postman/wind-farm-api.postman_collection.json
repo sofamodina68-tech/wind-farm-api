@@ -1170,7 +1170,7 @@
       ]
     },
     {
-      "name": "Health",
+      "name": "GET Health Live",
       "event": [
         {
           "listen": "test",
@@ -1186,13 +1186,14 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/health",
+          "raw": "{{baseUrl}}/api/health/live",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "health"
+            "health",
+            "live"
           ]
         }
       },
@@ -1574,6 +1575,36 @@
             "requests",
             "b1000000-0000-0000-0000-000000000013",
             "status"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET Health Ready",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 or 503', () => {\r\n  pm.expect([200, 503]).to.include(pm.response.code);\r\n});\r\nif (pm.response.code === 200) {\r\n  pm.test('Status ready', () => {\r\n    pm.expect(pm.response.json().status).to.eql('ready');\r\n  });\r\n} else {\r\n  pm.test('Code NOT_READY', () => {\r\n    pm.expect(pm.response.json().error.code).to.eql('NOT_READY');\r\n  });\r\n}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health/ready",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "health",
+            "ready"
           ]
         }
       },

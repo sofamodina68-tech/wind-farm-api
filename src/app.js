@@ -4,10 +4,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
-import { requestId } from './middlewares/requestId.js';
-import { logger } from './middlewares/logger.js';
+import { httpLogger } from './middlewares/logger.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import healthRoutes from './routes/health.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import requestsRoutes from './routes/requests.routes.js';
 import sitesRoutes from './routes/sites.routes.js';
@@ -20,13 +20,11 @@ export function createApp() {
   // 1. Security headers
   app.use(helmet());
 
-  // 2. Request ID + logger — как можно раньше,
+  // 2. Логирование + requestId (pino-http) — как можно раньше,
   //    чтобы все дальнейшие ответы (429, 413, 400, CORS) имели requestId
-  //    и попадали в лог.
-  app.use(requestId);
-  app.use(logger);
+  app.use(httpLogger);
 
-  // 3. CORS — отклонённые запросы теперь логируются
+  // 3. CORS
   app.use(
     cors({
       origin: (origin, cb) => {
@@ -67,20 +65,20 @@ export function createApp() {
   // 5. Body parser с ограничением размера
   app.use(express.json({ limit: '100kb' }));
 
-  // 6. Cookie parser — для refresh-токена в HttpOnly cookie
+  // 6. Cookie parser
   app.use(cookieParser());
 
   // 7. Routes
-  app.get('/api/health', (req, res) =>
-    res.json({ status: 'ok', requestId: req.id }),
-  );
+  // /api/health/live — процесс жив
+  // /api/health/ready — БД доступна (иначе 503)
+  app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/equipment', equipmentRoutes);
   app.use('/api/requests', requestsRoutes);
   app.use('/api/sites', sitesRoutes);
   app.use('/api/reports', reportsRoutes);
 
-  // 8. 404 и обработчик ошибок — последними
+  // 8. 404 и error handler
   app.use(notFound);
   app.use(errorHandler);
 
