@@ -5,3 +5,5 @@ reports/
 data/*.json
 pgdata/
 .sequelizerc.cjs
+.env.test
+coverage/

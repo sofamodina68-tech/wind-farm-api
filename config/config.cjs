@@ -1,4 +1,6 @@
-require('dotenv').config();
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+});
 
 const base = {
   username: process.env.DB_USER,
@@ -20,6 +22,6 @@ const base = {
 
 module.exports = {
   development: base,
-  test: { ...base, database: `${base.database}_test` },
+  test: base,
   production: base,
 };
