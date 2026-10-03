@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import process from 'node:process';
 import { authController } from '../controllers/auth.controller.js';
 import { validate } from '../middlewares/validate.js';
 import { authenticate } from '../middlewares/auth.js';
@@ -9,8 +10,8 @@ const router = Router();
 
 // Отдельный rate limit на вход — защита от брутфорса
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 10, // 10 попыток с одного IP
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.LOGIN_RATE_LIMIT_MAX ?? 10),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
