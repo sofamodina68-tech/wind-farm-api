@@ -5,9 +5,11 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
 import { httpLogger } from './middlewares/logger.js';
+import { metricsMiddleware } from './middlewares/metrics.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import healthRoutes from './routes/health.routes.js';
+import metricsRoutes from './routes/metrics.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import requestsRoutes from './routes/requests.routes.js';
 import sitesRoutes from './routes/sites.routes.js';
@@ -18,16 +20,18 @@ export function createApp() {
   const app = express();
 
   // Trust proxy (Nginx) — чтобы req.ip и rate limit видели реальный IP клиента
-app.set('trust proxy', 1);
+  app.set('trust proxy', 1);
 
   // 1. Security headers
   app.use(helmet());
 
-  // 2. Логирование + requestId (pino-http) — как можно раньше,
-  //    чтобы все дальнейшие ответы (429, 413, 400, CORS) имели requestId
+  // 2. Логирование + requestId (pino-http)
   app.use(httpLogger);
 
-  // 3. CORS
+  // 3. Метрики Prometheus (собираем до маршрутов, чтобы ловить все запросы)
+  app.use(metricsMiddleware);
+
+  // 4. CORS
   app.use(
     cors({
       origin: (origin, cb) => {
@@ -45,7 +49,7 @@ app.set('trust proxy', 1);
     }),
   );
 
-  // 4. Rate limiting на /api
+  // 5. Rate limiting на /api
   app.use(
     '/api',
     rateLimit({
@@ -65,13 +69,16 @@ app.set('trust proxy', 1);
     }),
   );
 
-  // 5. Body parser с ограничением размера
+  // 6. Body parser с ограничением размера
   app.use(express.json({ limit: '100kb' }));
 
-  // 6. Cookie parser
+  // 7. Cookie parser
   app.use(cookieParser());
 
-  // 7. Routes
+  // 8. Routes
+  // /metrics — метрики Prometheus (для Grafana)
+  app.use('/metrics', metricsRoutes);
+
   // /api/health/live — процесс жив
   // /api/health/ready — БД доступна (иначе 503)
   app.use('/api/health', healthRoutes);
@@ -81,7 +88,7 @@ app.set('trust proxy', 1);
   app.use('/api/sites', sitesRoutes);
   app.use('/api/reports', reportsRoutes);
 
-  // 8. 404 и error handler
+  // 9. 404 и error handler
   app.use(notFound);
   app.use(errorHandler);
 
