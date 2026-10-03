@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: WindFarmPostgres
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: wind_farm
+    user: ${DB_USER}
+    secureJsonData:
+      password: ${DB_PASSWORD}
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    isDefault: true
+    editable: false
