@@ -31,6 +31,18 @@ export class BadRequestError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Требуется авторизация') {
+    super('UNAUTHORIZED', message);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = 'Недостаточно прав для выполнения операции') {
+    super('FORBIDDEN', message);
+  }
+}
+
 export class ExternalServiceError extends AppError {
   constructor(code, message) {
     super(code, message);
