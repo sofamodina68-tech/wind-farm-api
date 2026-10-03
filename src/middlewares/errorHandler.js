@@ -13,6 +13,7 @@ import {
   ForbiddenError,
 } from '../errors/AppError.js';
 import { config } from '../config/index.js';
+import { logger } from '../config/logger.js';
 
 const STATUS_MAP = {
   BAD_REQUEST: 400,
@@ -38,7 +39,6 @@ export function errorHandler(err, req, res, _next) {
   let message = 'Внутренняя ошибка сервера';
   let details;
 
-  // CORS-ошибка от библиотеки cors → 403
   if (err.code === 'CORS_FORBIDDEN' || err.message === 'Not allowed by CORS') {
     statusCode = 403;
     code = 'CORS_FORBIDDEN';
@@ -78,12 +78,18 @@ export function errorHandler(err, req, res, _next) {
     message = 'Тело запроса превышает допустимый размер';
   }
 
-  const logLevel = statusCode >= 500 ? 'ERROR' : 'WARN';
-  console.error(
-    `[${logLevel}] reqId=${req.id} code=${code} ${err.message}${
-      statusCode >= 500 ? `\n${err.stack}` : ''
-    }`,
-  );
+  const logPayload = {
+    reqId: req.id,
+    code,
+    statusCode,
+    errMessage: err.message,
+  };
+  if (statusCode >= 500) {
+    logPayload.stack = err.stack;
+    logger.error(logPayload, `Request failed: ${code}`);
+  } else {
+    logger.warn(logPayload, `Request warning: ${code}`);
+  }
 
   const body = {
     error: {
