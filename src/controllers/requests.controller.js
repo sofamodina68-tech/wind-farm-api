@@ -35,6 +35,8 @@ export const requestsController = {
     const request = await requestsService.changeStatus(
       req.validated.params.id,
       req.validated.body.status,
+      req.user?.email ?? 'api',
+      req.user,
     );
     res.json({ data: request });
   }),

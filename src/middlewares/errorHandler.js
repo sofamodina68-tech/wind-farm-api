@@ -9,11 +9,15 @@ import {
   ValidationError,
   NotFoundError,
   ConflictError,
+  UnauthorizedError,
+  ForbiddenError,
 } from '../errors/AppError.js';
 import { config } from '../config/index.js';
 
 const STATUS_MAP = {
   BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
   VALIDATION_ERROR: 422,
   NOT_FOUND: 404,
   CONFLICT: 409,
@@ -34,7 +38,7 @@ export function errorHandler(err, req, res, _next) {
   let message = 'Внутренняя ошибка сервера';
   let details;
 
-  // CORS-ошибка от библиотеки cors → 403 (а не 500)
+  // CORS-ошибка от библиотеки cors → 403
   if (err.code === 'CORS_FORBIDDEN' || err.message === 'Not allowed by CORS') {
     statusCode = 403;
     code = 'CORS_FORBIDDEN';

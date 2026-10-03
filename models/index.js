@@ -8,6 +8,7 @@ import { initEquipmentPassport } from './equipmentPassport.js';
 import { initMaintenanceRequest } from './maintenanceRequest.js';
 import { initRequestStatusHistory } from './requestStatusHistory.js';
 import { initRequestAssignee } from './requestAssignee.js';
+import { initUser } from './user.js';
 
 const env = process.env.NODE_ENV ?? 'development';
 const dbConfig = config[env];
@@ -33,6 +34,7 @@ export const EquipmentPassport = initEquipmentPassport(sequelize);
 export const MaintenanceRequest = initMaintenanceRequest(sequelize);
 export const RequestStatusHistory = initRequestStatusHistory(sequelize);
 export const RequestAssignee = initRequestAssignee(sequelize);
+export const User = initUser(sequelize);
 
 // Регистрация ассоциаций
 const models = {
@@ -43,6 +45,7 @@ const models = {
   MaintenanceRequest,
   RequestStatusHistory,
   RequestAssignee,
+  User,
 };
 
 Object.values(models).forEach((model) => {
@@ -61,4 +64,5 @@ export default {
   MaintenanceRequest,
   RequestStatusHistory,
   RequestAssignee,
+  User,
 };

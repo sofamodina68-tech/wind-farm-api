@@ -1,7 +1,8 @@
 import { Router } from 'express';
+import Joi from 'joi';
 import { reportsController } from '../controllers/reports.controller.js';
 import { validate } from '../middlewares/validate.js';
-import Joi from 'joi';
+import { authenticate, authorize } from '../middlewares/auth.js';
 
 const router = Router();
 
@@ -11,9 +12,10 @@ const equipmentLoadQuerySchema = Joi.object({
   minRequests: Joi.number().integer().min(0).default(0),
 });
 
-// GET /api/reports/equipment-load
 router.get(
   '/equipment-load',
+  authenticate,
+  authorize('admin'),
   validate({ query: equipmentLoadQuerySchema }),
   reportsController.equipmentLoad,
 );
