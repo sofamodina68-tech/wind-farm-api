@@ -27,6 +27,8 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "pg-hstore": "^2.3.4",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
