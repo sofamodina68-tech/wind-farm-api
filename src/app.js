@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
 import { requestId } from './middlewares/requestId.js';
 import { logger } from './middlewares/logger.js';
@@ -11,6 +12,7 @@ import equipmentRoutes from './routes/equipment.routes.js';
 import requestsRoutes from './routes/requests.routes.js';
 import sitesRoutes from './routes/sites.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 export function createApp() {
   const app = express();
@@ -42,7 +44,7 @@ export function createApp() {
     }),
   );
 
-  // 4. Rate limiting на /api — тоже попадает в лог
+  // 4. Rate limiting на /api
   app.use(
     '/api',
     rateLimit({
@@ -65,16 +67,20 @@ export function createApp() {
   // 5. Body parser с ограничением размера
   app.use(express.json({ limit: '100kb' }));
 
-  // 6. Routes
+  // 6. Cookie parser — для refresh-токена в HttpOnly cookie
+  app.use(cookieParser());
+
+  // 7. Routes
   app.get('/api/health', (req, res) =>
     res.json({ status: 'ok', requestId: req.id }),
   );
+  app.use('/api/auth', authRoutes);
   app.use('/api/equipment', equipmentRoutes);
   app.use('/api/requests', requestsRoutes);
   app.use('/api/sites', sitesRoutes);
   app.use('/api/reports', reportsRoutes);
 
-  // 7. 404 и обработчик ошибок — последними
+  // 8. 404 и обработчик ошибок — последними
   app.use(notFound);
   app.use(errorHandler);
 
