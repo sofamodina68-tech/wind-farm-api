@@ -10,6 +10,7 @@ import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import healthRoutes from './routes/health.routes.js';
 import metricsRoutes from './routes/metrics.routes.js';
+import docsRoutes from './routes/docs.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import requestsRoutes from './routes/requests.routes.js';
 import sitesRoutes from './routes/sites.routes.js';
@@ -28,7 +29,7 @@ export function createApp() {
   // 2. Логирование + requestId (pino-http)
   app.use(httpLogger);
 
-  // 3. Метрики Prometheus (собираем до маршрутов, чтобы ловить все запросы)
+  // 3. Метрики Prometheus
   app.use(metricsMiddleware);
 
   // 4. CORS
@@ -76,13 +77,10 @@ export function createApp() {
   app.use(cookieParser());
 
   // 8. Routes
-  // /metrics — метрики Prometheus (для Grafana)
   app.use('/metrics', metricsRoutes);
-
-  // /api/health/live — процесс жив
-  // /api/health/ready — БД доступна (иначе 503)
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/docs', docsRoutes);
   app.use('/api/equipment', equipmentRoutes);
   app.use('/api/requests', requestsRoutes);
   app.use('/api/sites', sitesRoutes);
